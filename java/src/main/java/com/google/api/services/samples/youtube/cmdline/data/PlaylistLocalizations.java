@@ -19,9 +19,7 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.ArrayMap;
 import com.google.api.services.samples.youtube.cmdline.Auth;
 import com.google.api.services.youtube.YouTube;
-import com.google.api.services.youtube.model.Playlist;
-import com.google.api.services.youtube.model.PlaylistListResponse;
-import com.google.api.services.youtube.model.PlaylistLocalization;
+import com.google.api.services.youtube.model.*;
 import com.google.common.collect.Lists;
 
 import java.io.BufferedReader;
@@ -71,10 +69,10 @@ public class PlaylistLocalizations {
                     .setApplicationName("youtube-cmdline-localizations-sample").build();
 
             // Prompt the user to specify the action of the be achieved.
-            String actionString = getActionFromUser();
-            System.out.println("You chose " + actionString + ".");
+            //String actionString = getActionFromUser();
+            //System.out.println("You chose " + actionString + ".");
             //Map the user input to the enum values.
-            Action action = Action.valueOf(actionString.toUpperCase());
+            Action action = Action.LIST;
 
             switch (action) {
                 case SET:
@@ -85,7 +83,7 @@ public class PlaylistLocalizations {
                     getPlaylistLocalization(getId("playlist"), getLanguage());
                     break;
                 case LIST:
-                    listPlaylistLocalizations(getId("playlist"));
+                    listPlaylistLocalizations("PLTxJuzTGJQx3F0zSgjyJ7r2eNVfdvIHPh");
                     break;
             }
         } catch (GoogleJsonResponseException e) {
@@ -206,30 +204,39 @@ public class PlaylistLocalizations {
      */
     private static void listPlaylistLocalizations(String playlistId) throws IOException {
         // Call the YouTube Data API's playlists.list method to retrieve playlists.
+        listDetails(playlistId);
+        items(playlistId);
+    }
+
+    private static void listDetails(String playlistId) throws IOException {
+        //TODO: https://developers.google.com/youtube/v3/docs/playlists/list
         PlaylistListResponse playlistListResponse = youtube.playlists().
-            list("snippet,localizations").setId(playlistId).execute();
+            list("snippet,localizations,contentDetails,player")
+                .setId(playlistId).execute();
 
         // Since the API request specified a unique playlist ID, the API
         // response should return exactly one playlist. If the response does
         // not contain a playlist, then the specified playlist ID was not found.
-        List<Playlist> playlistList = playlistListResponse.getItems();
-        if (playlistList.isEmpty()) {
-            System.out.println("Can't find a playlist with ID: " + playlistId);
-            return;
+        List<Playlist> lista = playlistListResponse.getItems();
+        if (lista.isEmpty()) {
+            throw new IllegalStateException("Can't find a playlist with ID: " + playlistId);
         }
-        Playlist playlist = playlistList.get(0);
-        Map<String, PlaylistLocalization> localizations = playlist.getLocalizations();
+        Playlist playlist = lista.get(0);
+        String title = playlist.getSnippet().getLocalized().getTitle();
+        System.out.println("title = " + title);
+    }
 
-        // Print information from the API response.
-        System.out.println("\n================== Playlist ==================\n");
-        System.out.println("  - ID: " + playlist.getId());
-        for (String language : localizations.keySet()) {
-            System.out.println("  - Title(" + language + "): " +
-                localizations.get(language).getTitle());
-            System.out.println("  - Description(" + language + "): " +
-                localizations.get(language).getDescription());
+    private static void items(String playlistId) throws IOException {
+        PlaylistItemListResponse itemListResponse = youtube.playlistItems().
+                list("snippet,contentDetails")
+                .setId(playlistId).execute();
+
+        List<PlaylistItem> items = itemListResponse.getItems();
+        for (PlaylistItem item : items) {
+            System.out.println("item = " + item);
+            PlaylistItemContentDetails contentDetails = item.getContentDetails();
+            System.out.println("contentDetails = " + contentDetails);
         }
-        System.out.println("\n-------------------------------------------------------------\n");
     }
 
     /*
